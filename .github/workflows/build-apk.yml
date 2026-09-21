@@ -1,4 +1,3 @@
-
 name: Build ORPHEUS APK
 
 on:
@@ -22,10 +21,7 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK
+      - name: Install Android SDK components
         run: |
           yes | sdkmanager --licenses || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
@@ -37,15 +33,18 @@ jobs:
 
       - name: Extract ORPHEUS
         run: |
+          rm -rf build-src
           mkdir build-src
           unzip -q "OrpheusUniversal_v0.8_Exact_ORPHEUS_Symbol.zip" -d build-src
+          test -f build-src/jarvis/JarvisMVP/settings.gradle.kts
 
       - name: Build APK
         working-directory: build-src/jarvis/JarvisMVP
-        run: gradle :app:assembleDebug --no-daemon
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ORPHEUS-v0.8-APK
           path: build-src/jarvis/JarvisMVP/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
