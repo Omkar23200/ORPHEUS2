@@ -26,19 +26,56 @@ jobs:
         with:
           gradle-version: "8.11.1"
 
-      - name: Check Android environment
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          ls -la "$ANDROID_HOME" || true
-          ls -la "$ANDROID_HOME/platforms" || true
-          ls -la "$ANDROID_HOME/build-tools" || true
-
       - name: Extract ORPHEUS
         run: |
           rm -rf build-src
           mkdir build-src
           unzip -q "OrpheusUniversal_v0.8_Exact_ORPHEUS_Symbol.zip" -d build-src
           test -f build-src/jarvis/JarvisMVP/settings.gradle.kts
+
+      - name: Patch ORPHEUS v0.8 source
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          p = Path("build-src/jarvis/JarvisMVP/app/src/main/java/com/omkar/jarvis/MainActivity.kt")
+          s = p.read_text()
+
+          # Fix missing Compose setContent import
+          if "import androidx.activity.compose.setContent" not in s:
+              s = s.replace(
+                  "import androidx.activity.ComponentActivity",
+                  "import androidx.activity.ComponentActivity\nimport androidx.activity.compose.setContent"
+              )
+
+          # Fix Regex usage with substringAfter
+          s = s.replace(
+              'clean.substringAfter(Regex("(?i)check grammar|correct grammar|fix grammar"), "").trim()',
+              'clean.replaceFirst(Regex("(?i)^(check grammar|correct grammar|fix grammar)\\\\s*"), "").trim()'
+          )
+
+          s = s.replace(
+              'clean.substringAfter(Regex("(?i)advice|advise"), "").trim()',
+              'clean.replaceFirst(Regex("(?i)^(advice|advise)\\\\s*"), "").trim()'
+          )
+
+          s = s.replace(
+              'clean.substringAfter(Regex("(?i)send message|message|sms"), "").trim()',
+              'clean.replaceFirst(Regex("(?i)^(send message|message|sms)\\\\s*"), "").trim()'
+          )
+
+          # Remove unused top-level preference functions that incorrectly
+          # call Activity methods outside MainActivity.
+          marker = "/** Local response preferences used by the ORPHEUS UI. */"
+          if marker in s:
+              s = s.split(marker)[0].rstrip() + "\n"
+
+          p.write_text(s)
+          PY
+
+          echo "Patched MainActivity.kt"
+          grep -n "setContent" build-src/jarvis/JarvisMVP/app/src/main/java/com/omkar/jarvis/MainActivity.kt
+          tail -20 build-src/jarvis/JarvisMVP/app/src/main/java/com/omkar/jarvis/MainActivity.kt
 
       - name: Build APK
         working-directory: build-src/jarvis/JarvisMVP
