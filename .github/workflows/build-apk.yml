@@ -1,4 +1,4 @@
- name:Build ORPHEUS APK
+name: Build ORPHEUS APK
 
 on:
   workflow_dispatch:
@@ -83,4 +83,4 @@ jobs:
         with:
           name: ORPHEUS-v0.8-APK
           path: build-src/jarvis/JarvisMVP/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error    
+          if-no-files-found: error
