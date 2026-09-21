@@ -44,6 +44,7 @@ jobs:
 
           s = p.read_text()
 
+          # Fix missing Compose setContent import
           if "import androidx.activity.compose.setContent" not in s:
               s = s.replace(
                   "import androidx.activity.ComponentActivity",
@@ -51,32 +52,44 @@ jobs:
                   "import androidx.activity.compose.setContent"
               )
 
+          # Fix grammar command
           s = s.replace(
               'clean.substringAfter(Regex("(?i)check grammar|correct grammar|fix grammar"), "").trim()',
-              'clean.replaceFirst(Regex("(?i)^(check grammar|correct grammar|fix grammar)\\s*"), "").trim()'
+              'clean.replaceFirst(Regex("(?i)^(check grammar|correct grammar|fix grammar)[ ]*"), "").trim()'
           )
 
+          # Fix advice command
           s = s.replace(
               'clean.substringAfter(Regex("(?i)advice|advise"), "").trim()',
-              'clean.replaceFirst(Regex("(?i)^(advice|advise)\\s*"), "").trim()'
+              'clean.replaceFirst(Regex("(?i)^(advice|advise)[ ]*"), "").trim()'
           )
 
+          # Fix message command
           s = s.replace(
               'clean.substringAfter(Regex("(?i)send message|message|sms"), "").trim()',
-              'clean.replaceFirst(Regex("(?i)^(send message|message|sms)\\s*"), "").trim()'
+              'clean.replaceFirst(Regex("(?i)^(send message|message|sms)[ ]*"), "").trim()'
           )
 
+          # Remove incorrect top-level preference functions
           marker = "/** Local response preferences used by the ORPHEUS UI. */"
 
           if marker in s:
               s = s.split(marker)[0].rstrip() + "\n"
 
           p.write_text(s)
+
+          print("ORPHEUS source patched successfully.")
           PY
+
+      - name: Verify patched source
+        run: |
+          test -f build-src/jarvis/JarvisMVP/app/src/main/java/com/omkar/jarvis/MainActivity.kt
+          grep -n "setContent" build-src/jarvis/JarvisMVP/app/src/main/java/com/omkar/jarvis/MainActivity.kt
 
       - name: Build APK
         working-directory: build-src/jarvis/JarvisMVP
-        run: gradle :app:assembleDebug --no-daemon --stacktrace
+        run: |
+          gradle :app:assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
